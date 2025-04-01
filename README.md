@@ -15,8 +15,6 @@
 安装`redis`
 
 
-
-
 配置数据库
 ```shell
 # 连接MySQL
@@ -37,10 +35,6 @@ cd ./bin
 # 启动客户端
 ./ChatClient 127.0.0.1 8000
 ```
-
-![1663830571(1).png](https://syz-picture.oss-cn-shenzhen.aliyuncs.com/D:%5CPrograme%20Files(x86)%5CPicGo1663830578650-52d58f18-370f-426a-b8fe-f07dfd06b116.png)
-
-# 项目讲解
 
 ## 数据库表设计
 
@@ -84,14 +78,6 @@ cd ./bin
 | message  | VARCHAR(50) | 离线消息（存储Json字符串） | NOT NULL |
 
 ## 网络模块设计
-
-我们会使用 muduo 完成网络模块的代码，在这之前我们需要了解 muduo 的基本使用。
-
-muduo 的线程模型为「one loop per thread + threadPool」模型。一个线程对应一个事件循环（EventLoop），也对应着一个 Reactor 模型。EventLoop 负责 IO 和定时器事件的分派。
-
-muduo 是主从 Reactor 模型，有 `mainReactor` 和 `subReactor`。`mainReactor`通过 `Acceptor` 接收新连接，然后将新连接派发到 `subReactor` 上进行连接的维护。这样 `mainReactor` 可以只专注于监听新连接的到来，而从维护旧连接的业务中得到解放。同时多个 `Reactor` 可以并行运行在多核 CPU 中，增加服务效率。因此我们可以通过 muduo 快速完成网络模块。
-
-![](https://cdn.nlark.com/yuque/0/2022/png/26752078/1663324955126-3a8078fe-f271-4a1b-82c7-b75edff3cda8.png?x-oss-process=image%2Fresize%2Cw_720%2Climit_0#crop=0&crop=0&crop=1&crop=1&from=url&height=345&id=Jzfh0&margin=%5Bobject%20Object%5D&originHeight=435&originWidth=720&originalType=binary&ratio=1&rotation=0&showTitle=false&status=done&style=none&title=&width=571)
 
 使用 muduo 注册消息事件到来的回调函数，并根据得到的 `MSGID` 定位到不同的处理函数中。以此实现业务模块和网络模块的解耦。
 
@@ -154,21 +140,9 @@ void ChatServer::onMessage(const TcpConnectionPtr &conn,
 
 这个时候我们就可以增加服务器的数量，将用户请求分发到不同的服务器上分担压力，这就是负载均衡。那我们就需要有一个第三方组件充当负载均衡器，由它负责将不同的请求分发到不同的服务器上。而本项目，我们选择 `Nginx` 的负载均衡功能。
 
-![](https://cdn.nlark.com/yuque/0/2022/png/26752078/1663746624651-351f9bcb-4ed5-40cd-9f2f-1b72c9964316.png#crop=0&crop=0&crop=1&crop=1&from=url&id=i9BRn&margin=%5Bobject%20Object%5D&originHeight=494&originWidth=967&originalType=binary&ratio=1&rotation=0&showTitle=false&status=done&style=none&title=)
-
 选择 `Nginx` 的 `tcp` 负载均衡模块的原因：
 
 1. 把`client`的请求按照负载算法分发到具体的业务服务器`ChatServer`上
 2. 能够`ChantServer`保持心跳机制，检测`ChatServer`故障
 3. 能够发现新添加的`ChatServer`设备，方便扩展服务器数量
-
-### 配置负载均衡
-
-![](https://cdn.nlark.com/yuque/0/2022/png/26752078/1663732379258-4c925576-3374-4f0d-8274-6031a8366536.png#crop=0&crop=0&crop=1&crop=1&from=url&id=ARrJw&margin=%5Bobject%20Object%5D&originHeight=402&originWidth=810&originalType=binary&ratio=1&rotation=0&showTitle=false&status=done&style=none&title=)
-
-配置好后，重新加载配置文件启动。
-
-```shell
-/usr/local/nginx/sbin/nginx -s reload
-```
 
